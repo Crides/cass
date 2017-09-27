@@ -73,7 +73,7 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
-              <object class="GtkButton" id="show-history">
+              <object class="GtkButton" id="show-past">
                 <property name="label" translatable="yes">_Past Assignments</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -193,6 +193,7 @@
   </object>
   <object class="GtkWindow" id="hw-win">
     <property name="can_focus">False</property>
+    <property name="tooltip_text" translatable="yes">Mark this assignment as "done"</property>
     <property name="border_width">7</property>
     <property name="title" translatable="yes">New Assignment</property>
     <property name="resizable">False</property>
@@ -385,6 +386,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="no_show_all">True</property>
+                <property name="tooltip_text" translatable="yes">Completely delete this assignment</property>
                 <property name="image">delete-icon</property>
                 <property name="use_underline">True</property>
                 <property name="always_show_image">True</property>
@@ -523,6 +525,40 @@
         </child>
         <child>
           <placeholder/>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkListStore" id="past-list">
+    <columns>
+      <!-- column-name id -->
+      <column type="gint"/>
+      <!-- column-name Course -->
+      <column type="gchararray"/>
+      <!-- column-name Name -->
+      <column type="gchararray"/>
+      <!-- column-name Type -->
+      <column type="gint"/>
+      <!-- column-name Due -->
+      <column type="gint"/>
+      <!-- column-name Done -->
+      <column type="gboolean"/>
+    </columns>
+  </object>
+  <object class="GtkWindow" id="past-win">
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">Past Assignments</property>
+    <property name="transient_for">main-window</property>
+    <child>
+      <object class="GtkTreeView" id="past-hw">
+        <property name="width_request">400</property>
+        <property name="height_request">200</property>
+        <property name="visible">True</property>
+        <property name="can_focus">True</property>
+        <property name="border_width">5</property>
+        <property name="model">past-list</property>
+        <child internal-child="selection">
+          <object class="GtkTreeSelection" id="treeview-selection2"/>
         </child>
       </object>
     </child>

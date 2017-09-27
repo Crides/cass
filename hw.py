@@ -3,6 +3,8 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
 import time
 
+ESC_KEY_VAL = Gdk.keyval_from_name("Escape")
+
 class HWData():
     def __init__(self, row):
         self._id, self.course, self.name, self.typ, \
@@ -65,9 +67,8 @@ class HWWindow:
         self.hw_done.    connect("clicked", self.mark_as_done)
         self.hw_cancel.  connect("clicked", lambda b:self.hide())
         self.hw_link_btn.connect("clicked", self.open_link)
-        self.accelgroup = Gtk.AccelGroup()
-        self.window.add_accel_group(self.accelgroup)
-        self.hw_cancel.add_accelerator("clicked", self.accelgroup, Gdk.keyval_from_name("Escape"), 0, Gtk.AccelFlags.VISIBLE)
+        self.window.add_accel_group(self.app.accelgroup)
+        self.hw_cancel.add_accelerator("clicked", self.app.accelgroup, ESC_KEY_VAL, 0, Gtk.AccelFlags.VISIBLE)
 
     def show_all(self):
         self.window.show_all()

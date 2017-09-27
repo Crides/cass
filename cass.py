@@ -93,7 +93,7 @@ class CASSApp(Gtk.Application):
             else:               # Show just hws
                 for hw in self.sqlfetchall("""
                     SELECT id, course, name, type, due, done FROM hws
-                        WHERE NOT done"""):
+                        WHERE NOT (done AND due < ?)""", [now()]):
                     self.tree_store.append(None, hw)
         except sql.Error as e:
             print(e)
@@ -109,27 +109,47 @@ class CASSApp(Gtk.Application):
         # Main Window's
         self.get_object("show-tree").connect("toggled", self.switch_tree_view_mode)
         self.get_object("new-hw-btn").connect_object("clicked", self.show_hw, None)
+        self.get_object("show-past").connect("clicked", self.show_past)
         self.tree_store = self.get_object("hw-store")
         self.tree_view = self.get_object("hw-tree")
         self.tree_view.connect("button-press-event", self.handle_tree_view_click)
+        self.accelgroup = Gtk.AccelGroup()
 
         # Homework window
         self.hw_win = HWWindow(self)
 
+        # Past hw window
+        self.past_win  = self.get_object("past-win")
+        self.past_hw   = self.get_object("past-hw")
+        self.past_list = self.get_object("past-list")
+        self.past_win.add_accel_group(self.accelgroup)
+        self.past_win.connect("key-press-event", lambda w, e: w.hide() if e.keyval == ESC_KEY_VAL else None)
+
         # Show main window
-        self.populate_tree_view()
+        self.populate_tree_view(self.tree_view)
+        cell = Gtk.CellRendererText()
+        col = Gtk.TreeViewColumn(COLUMN_NAMES[0], cell, text=1)
+        col.set_sort_column_id(1)
+        col.set_cell_data_func(cell, self.set_course_attr)
+        self.past_hw.append_column(col)      # Insert the Course column at the front
+        self.populate_tree_view(self.past_hw)
+
+        # Read data
+        self.refresh_tree()
         window = self.get_object("main-window")
         window.set_application(self)
         window.show_all()
 
-    def populate_tree_view(self):
+    def populate_tree_view(self, treeview):
+        show_color = treeview == self.tree_view
+        
         # Name column
         cell = Gtk.CellRendererText()
         col = Gtk.TreeViewColumn(COLUMN_NAMES[1], cell, text=2)
         col.set_expand(True)
         col.set_sort_column_id(2)
         col.set_cell_data_func(cell, self.set_name_attr)
-        self.tree_view.append_column(col)
+        treeview.append_column(col)
 
         # Type column
         cell = Gtk.CellRendererText()
@@ -137,18 +157,21 @@ class CASSApp(Gtk.Application):
         col.set_property("fixed-width", 120)
         col.set_sort_column_id(3)
         col.set_cell_data_func(cell, self.set_type_attr)
-        self.tree_view.append_column(col)
+        treeview.append_column(col)
 
         # Due column
         cell = Gtk.CellRendererText()
         col = Gtk.TreeViewColumn(COLUMN_NAMES[3], cell)
         col.set_property("fixed-width", 110)
         col.set_sort_column_id(4)
-        col.set_cell_data_func(cell, self.set_due_attr)
-        self.tree_view.append_column(col)
+        col.set_cell_data_func(cell, self.set_due_attr, show_color)
+        treeview.append_column(col)
 
-        # Read data
-        self.refresh_tree()
+    def set_course_attr(self, col, cell, model, tree_iter, usrd):
+        done = model[tree_iter][5]
+        cell.set_property("foreground", TEXT_COLORS[done])  # Grey if done
+        cell.set_property("strikethrough", done)            # Strike thru if done
+        cell.set_property("background", BG_COLORS[done])    # Grey if done
 
     def set_name_attr(self, col, cell, model, tree_iter, usrd):
         done = model[tree_iter][5]
@@ -169,7 +192,8 @@ class CASSApp(Gtk.Application):
         else:
             cell.set_property("foreground", TYPE_COLORS[typ])
 
-    def set_due_attr(self, col, cell, model, tree_iter, usrd):
+    def set_due_attr(self, col, cell, model, tree_iter, show_color):
+        # show_color: distinguish between main window and past assignment to recycle the func
         due_hour, done = model[tree_iter][4:6]
         time_str = ""
         background = None
@@ -193,6 +217,8 @@ class CASSApp(Gtk.Application):
                     background = TIME_COLORS[0]      # Normal
         else:
             background = BG_COLORS[done]
+        if not show_color:
+            background = BG_COLORS[0]
         # TODO ... until here
         cell.set_property("text", time_str)
         cell.set_property("background", background)
@@ -208,6 +234,7 @@ class CASSApp(Gtk.Application):
             cell = Gtk.CellRendererText()
             col = Gtk.TreeViewColumn(COLUMN_NAMES[0], cell, text=1)
             col.set_sort_column_id(1)
+            col.set_cell_data_func(cell, self.set_course_attr)
             self.tree_view.insert_column(col, 0)      # Insert the Course column at the front
         self.refresh_tree()
 
@@ -230,6 +257,15 @@ class CASSApp(Gtk.Application):
 
     def show_hw(self, hw):
         self.hw_win.show_hw(hw)
+
+    def show_past(self, btn):
+        self.past_list.clear()
+
+        for hw in self.sqlfetchall("""
+            SELECT id, course, name, type, due, 0 AS done FROM hws
+                WHERE (done AND due < ?)""", [now()]):
+            self.past_list.append(hw)
+        self.past_win.show_all()
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
